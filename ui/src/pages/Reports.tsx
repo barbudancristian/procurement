@@ -19,7 +19,7 @@ import {
 } from '@fluentui/react-components';
 import { DocumentPdf20Regular, DocumentTable20Regular, TextBulletListSquare20Regular } from '@fluentui/react-icons';
 import { PageHeader, Section } from '../components/common';
-import { daysBetween, fmtMoney, owners, projects, scopeLabel, suppliers, userById, type Project, type Scope } from '../data/mock';
+import { daysBetween, fmtMoney, toBase, owners, projects, scopeLabel, suppliers, userById, type Project, type Scope } from '../data/mock';
 
 const useStyles = makeStyles({
   layout: { display: 'grid', gridTemplateColumns: '320px 1fr', gap: '16px', '@media (max-width: 1000px)': { gridTemplateColumns: '1fr' } },
@@ -51,11 +51,11 @@ const reports: Report[] = [
     name: 'Annual sourcing activity',
     description: 'Projects started, completed and open, by scope.',
     build: (y) => ({
-      cols: ['Scope', 'Started', 'Completed', 'Open', 'Spend under management'],
+      cols: ['Scope', 'Started', 'Completed', 'Open', 'Spend under management (EUR)'],
       numeric: [1, 2, 3, 4],
       rows: scopes.map((sc) => {
         const ps = projects.filter((p) => p.scope === sc && inYear(p, y));
-        return [scopeLabel[sc], ps.filter((p) => p.created.startsWith(y)).length, ps.filter((p) => p.completed?.startsWith(y)).length, ps.filter((p) => !p.completed).length, fmtMoney(ps.reduce((a, p) => a + p.estSpend, 0))];
+        return [scopeLabel[sc], ps.filter((p) => p.created.startsWith(y)).length, ps.filter((p) => p.completed?.startsWith(y)).length, ps.filter((p) => !p.completed).length, fmtMoney(ps.reduce((a, p) => a + toBase(p.estSpend, p.currency), 0))];
       }),
     }),
   },
@@ -66,7 +66,7 @@ const reports: Report[] = [
     build: (y) => ({
       cols: ['Reference', 'Title', 'Suppliers', 'Status', 'Awarded to', 'Savings'],
       numeric: [2, 5],
-      rows: projects.filter((p) => p.scope === 'competitive' && inYear(p, y)).map((p) => [p.ref, p.title, p.supplierIds.length, p.status, p.awardedSupplierId ? suppliers.find((s) => s.id === p.awardedSupplierId)!.name : '—', fmtMoney(p.savings)]),
+      rows: projects.filter((p) => p.scope === 'competitive' && inYear(p, y)).map((p) => [p.ref, p.title, p.supplierIds.length, p.status, p.awardedSupplierId ? suppliers.find((s) => s.id === p.awardedSupplierId)!.name : '—', fmtMoney(p.savings, false, p.currency)]),
     }),
   },
   {
@@ -76,7 +76,7 @@ const reports: Report[] = [
     build: (y) => ({
       cols: ['Reference', 'Title', 'Supplier', 'Annual value', 'Justification', 'Approved by'],
       numeric: [3],
-      rows: projects.filter((p) => p.scope === 'sole' && inYear(p, y)).map((p) => [p.ref, p.title, p.supplierIds[0] ? suppliers.find((s) => s.id === p.supplierIds[0])!.name : '—', fmtMoney(p.estSpend), 'Proprietary technology or IP', p.stage > 1 ? 'Elena Popescu' : 'Pending']),
+      rows: projects.filter((p) => p.scope === 'sole' && inYear(p, y)).map((p) => [p.ref, p.title, p.supplierIds[0] ? suppliers.find((s) => s.id === p.supplierIds[0])!.name : '—', fmtMoney(p.estSpend, false, p.currency), 'Proprietary technology or IP', p.stage > 1 ? 'Elena Popescu' : 'Pending']),
     }),
   },
   {
@@ -86,7 +86,7 @@ const reports: Report[] = [
     build: (y) => ({
       cols: ['Reference', 'Title', 'Baseline', 'Final', 'Savings %'],
       numeric: [2, 3, 4],
-      rows: projects.filter((p) => p.scope !== 'support' && p.completed?.startsWith(y)).map((p) => [p.ref, p.title, fmtMoney(p.estSpend), fmtMoney(p.estSpend - p.savings), `${((p.savings / p.estSpend) * 100).toFixed(1)}%`]),
+      rows: projects.filter((p) => p.scope !== 'support' && p.completed?.startsWith(y)).map((p) => [p.ref, p.title, fmtMoney(p.estSpend, false, p.currency), fmtMoney(p.estSpend - p.savings, false, p.currency), `${((p.savings / p.estSpend) * 100).toFixed(1)}%`]),
     }),
   },
   {
@@ -110,12 +110,12 @@ const reports: Report[] = [
     name: 'Savings report',
     description: 'Negotiated savings by category.',
     build: (y) => ({
-      cols: ['Category', 'Projects completed', 'Addressed spend', 'Savings', 'Savings %'],
+      cols: ['Category', 'Projects completed', 'Addressed spend (EUR)', 'Savings (EUR)', 'Savings %'],
       numeric: [1, 2, 3, 4],
       rows: Array.from(new Set(projects.map((p) => p.category))).map((c) => {
         const ps = projects.filter((p) => p.category === c && p.completed?.startsWith(y));
-        const sp = ps.reduce((a, p) => a + p.estSpend, 0);
-        const sv = ps.reduce((a, p) => a + p.savings, 0);
+        const sp = ps.reduce((a, p) => a + toBase(p.estSpend, p.currency), 0);
+        const sv = ps.reduce((a, p) => a + toBase(p.savings, p.currency), 0);
         return [c, ps.length, fmtMoney(sp), fmtMoney(sv), sp ? `${((sv / sp) * 100).toFixed(1)}%` : '—'];
       }),
     }),
@@ -127,7 +127,7 @@ const reports: Report[] = [
     build: (y) => ({
       cols: ['Reference', 'Title', 'Cost avoidance'],
       numeric: [2],
-      rows: projects.filter((p) => p.costAvoidance > 0 && p.completed?.startsWith(y)).map((p) => [p.ref, p.title, fmtMoney(p.costAvoidance)]),
+      rows: projects.filter((p) => p.costAvoidance > 0 && p.completed?.startsWith(y)).map((p) => [p.ref, p.title, fmtMoney(p.costAvoidance, false, p.currency)]),
     }),
   },
   {

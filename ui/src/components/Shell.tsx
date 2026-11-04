@@ -41,6 +41,7 @@ import {
   WeatherMoon20Regular,
   WeatherSunny20Regular,
   Lightbulb20Regular,
+  Money20Regular,
   Globe20Regular,
 } from '@fluentui/react-icons';
 import { useApp, usePermissions } from '../state/AppContext';
@@ -257,6 +258,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <>
                 <Item to="/admin/users" icon={<People20Regular />} label="Users & Access" onClick={close} />
                 <Item to="/admin/workflows" icon={<Flow20Regular />} label="Workflows" onClick={close} />
+                <Item to="/admin/currencies" icon={<Money20Regular />} label="Currencies" onClick={close} />
                 <Item to="/admin/branding" icon={<PaintBrush20Regular />} label="Branding" onClick={close} />
                 <Item to="/admin/connection" icon={<PlugConnected20Regular />} label="SharePoint Connection" onClick={close} />
               </>

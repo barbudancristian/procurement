@@ -26,6 +26,7 @@ import {
   fmtDate,
   fmtMoney,
   fmtAxis,
+  toBase,
   owners,
   projects,
   scopeLabel,
@@ -103,9 +104,9 @@ export function Dashboard() {
   const isOpen = (p: Project) => p.status === 'In progress' || p.status === 'On hold' || p.status === 'Draft';
   const open = filtered.filter(isOpen);
   const completed = filtered.filter((p) => p.status === 'Completed' && (year === ALL || p.completed?.startsWith(year)));
-  const spend = filtered.filter((p) => p.status !== 'Cancelled').reduce((a, p) => a + p.estSpend, 0);
-  const savings = completed.reduce((a, p) => a + p.savings, 0);
-  const avoidance = completed.reduce((a, p) => a + p.costAvoidance, 0);
+  const spend = filtered.filter((p) => p.status !== 'Cancelled').reduce((a, p) => a + toBase(p.estSpend, p.currency), 0);
+  const savings = completed.reduce((a, p) => a + toBase(p.savings, p.currency), 0);
+  const avoidance = completed.reduce((a, p) => a + toBase(p.costAvoidance, p.currency), 0);
   const avgDuration = completed.length
     ? Math.round(completed.reduce((a, p) => a + daysBetween(p.created, p.completed!), 0) / completed.length)
     : 0;
@@ -242,8 +243,8 @@ export function Dashboard() {
         xAxis: { type: 'category' as const, data: q.map((x) => `${x} ${y}`), ...axisStyle(c), splitLine: { show: false } },
         yAxis: { type: 'value' as const, ...axisStyle(c), axisLine: { show: false }, axisLabel: { color: c.muted, fontSize: 11, formatter: (v: number) => fmtAxis(v) } },
         series: [
-          { type: 'bar' as const, name: 'Negotiated savings', barMaxWidth: 22, itemStyle: { color: c.series[0], borderRadius: [4, 4, 0, 0] }, data: q.map((_, i) => completed.filter((p) => inQ(p, i)).reduce((a, p) => a + p.savings, 0)) },
-          { type: 'bar' as const, name: 'Cost avoidance', barMaxWidth: 22, itemStyle: { color: c.series[1], borderRadius: [4, 4, 0, 0] }, data: q.map((_, i) => completed.filter((p) => inQ(p, i)).reduce((a, p) => a + p.costAvoidance, 0)) },
+          { type: 'bar' as const, name: 'Negotiated savings', barMaxWidth: 22, itemStyle: { color: c.series[0], borderRadius: [4, 4, 0, 0] }, data: q.map((_, i) => completed.filter((p) => inQ(p, i)).reduce((a, p) => a + toBase(p.savings, p.currency), 0)) },
+          { type: 'bar' as const, name: 'Cost avoidance', barMaxWidth: 22, itemStyle: { color: c.series[1], borderRadius: [4, 4, 0, 0] }, data: q.map((_, i) => completed.filter((p) => inQ(p, i)).reduce((a, p) => a + toBase(p.costAvoidance, p.currency), 0)) },
         ],
       };
     },
@@ -322,7 +323,7 @@ export function Dashboard() {
     <>
       <PageHeader
         title="Procurement portfolio"
-        subtitle={role === 'stakeholder' ? 'Projects you are involved in' : 'All sourcing activity at a glance'}
+        subtitle={`${role === 'stakeholder' ? 'Projects you are involved in' : 'All sourcing activity at a glance'}. Amounts converted to EUR.`}
         actions={
           <>
             <Button icon={<ArrowDownload20Regular />}>Export</Button>
@@ -352,7 +353,7 @@ export function Dashboard() {
         <KpiCard label="Total projects" value={filtered.length} note={`${open.length} in progress`} />
         <KpiCard label="Completed" value={completed.length} note={year === ALL ? 'all years' : `in ${year}`} />
         <KpiCard label="Spend under management" value={fmtMoney(spend, true)} help="Sum of estimated spend for all projects that are not cancelled." />
-        <KpiCard label="Negotiated savings" value={fmtMoney(savings, true)} help="Baseline cost minus final cost, for completed projects." note={spend ? `${((savings / Math.max(1, completed.reduce((a, p) => a + p.estSpend, 0))) * 100).toFixed(1)}% of addressed spend` : undefined} />
+        <KpiCard label="Negotiated savings" value={fmtMoney(savings, true)} help="Baseline cost minus final cost, for completed projects." note={spend ? `${((savings / Math.max(1, completed.reduce((a, p) => a + toBase(p.estSpend, p.currency), 0))) * 100).toFixed(1)}% of addressed spend` : undefined} />
         <KpiCard label="Cost avoidance" value={fmtMoney(avoidance, true)} help="Price increases requested by suppliers that were prevented." />
         <KpiCard label="Avg. duration" value={`${avgDuration} days`} note="creation to close" />
         <KpiCard

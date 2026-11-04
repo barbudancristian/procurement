@@ -53,7 +53,7 @@ import {
   ShieldCheckmark20Regular,
 } from '@fluentui/react-icons';
 import { PageHeader, Section } from '../../components/common';
-import { auditLog, projects, roleLabel, scopeLabel, users, workflows, type Role, type Scope, type User } from '../../data/mock';
+import { auditLog, BASE_CURRENCY, currencies, projects, roleLabel, scopeLabel, users, workflows, type Currency, type Role, type Scope, type User } from '../../data/mock';
 import { contrast, defaultBranding, type Branding } from '../../theme/branding';
 import { useApp } from '../../state/AppContext';
 
@@ -260,7 +260,7 @@ export function WorkflowsAdmin() {
       </Section>
       <Section title="Approval thresholds">
         <div className={s.row2}>
-          <Field label="Second approver required above (EUR)">
+          <Field label="Second approver required above (EUR, converted from project currency)">
             <Input defaultValue="250000" />
           </Field>
           <Field label="Second approver">
@@ -588,6 +588,141 @@ export function AuditAdmin() {
       </Card>
       <Subtitle2 style={{ display: 'block', marginTop: 16 }}>Changes made outside the app</Subtitle2>
       <Caption1 className={s.muted}>The integrity check compares SharePoint version history with this log. None found in the last 30 days.</Caption1>
+    </>
+  );
+}
+
+// ---------------- Currencies ----------------
+const knownCodes: string[] = (() => {
+  try {
+    return (Intl as unknown as { supportedValuesOf: (k: string) => string[] }).supportedValuesOf('currency');
+  } catch {
+    return [];
+  }
+})();
+
+export function CurrenciesAdmin() {
+  const s = useStyles();
+  const [list, setList] = useState<Currency[]>(() => currencies.map((c) => ({ ...c })));
+  const [code, setCode] = useState('');
+  const [name, setName] = useState('');
+  const [rate, setRate] = useState('');
+  const [msg, setMsg] = useState<{ intent: 'success' | 'error'; text: string } | null>(null);
+  const codeOk = /^[A-Z]{3}$/.test(code) && (knownCodes.length === 0 || knownCodes.includes(code));
+  const exists = list.some((c) => c.code === code);
+  const rateOk = Number(rate) > 0;
+
+  const save = () => {
+    currencies.splice(0, currencies.length, ...list);
+    setMsg({ intent: 'success', text: 'Currencies saved. New projects can use every active currency.' });
+  };
+  const add = () => {
+    if (!codeOk || exists || !rateOk || !name) {
+      setMsg({ intent: 'error', text: exists ? `${code} is already in the list.` : 'Enter a valid 3-letter ISO code (for example TRY), a name and a rate above 0.' });
+      return;
+    }
+    setList([...list, { code, name, rateToBase: Number(rate), active: true, updated: '2026-11-04' }]);
+    setCode('');
+    setName('');
+    setRate('');
+    setMsg(null);
+  };
+
+  return (
+    <>
+      <PageHeader
+        title="Currencies"
+        subtitle="Projects keep amounts in their own currency. Dashboards and reports convert them to the base currency with these rates."
+        actions={
+          <Button appearance="primary" icon={<Save20Regular />} onClick={save}>
+            Save changes
+          </Button>
+        }
+      />
+      {msg && (
+        <MessageBar intent={msg.intent} style={{ marginBottom: 12 }}>
+          <MessageBarBody>{msg.text}</MessageBarBody>
+        </MessageBar>
+      )}
+      <div className={s.grid}>
+        <Section title="Currency list" action={<Caption1 className={s.muted}>Base currency: EUR</Caption1>}>
+          <div style={{ overflowX: 'auto' }}>
+            <Table size="small" aria-label="Currencies">
+              <TableHeader>
+                <TableRow>
+                  <TableHeaderCell>Currency</TableHeaderCell>
+                  <TableHeaderCell>1 unit in EUR</TableHeaderCell>
+                  <TableHeaderCell>Updated</TableHeaderCell>
+                  <TableHeaderCell>Available</TableHeaderCell>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {list.map((c) => (
+                  <TableRow key={c.code}>
+                    <TableCell>
+                      <Text weight="semibold">{c.code}</Text> <Caption1 className={s.muted}>{c.name}</Caption1>{' '}
+                      {c.code === BASE_CURRENCY && (
+                        <Badge appearance="tint" color="brand" size="small">
+                          Base
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        size="small"
+                        style={{ width: 110 }}
+                        type="number"
+                        step="0.0001"
+                        min="0"
+                        disabled={c.code === BASE_CURRENCY}
+                        value={String(c.rateToBase)}
+                        aria-label={`Rate for ${c.code}`}
+                        onChange={(_, d) => setList(list.map((x) => (x.code === c.code ? { ...x, rateToBase: Number(d.value), updated: '2026-11-04' } : x)))}
+                      />
+                    </TableCell>
+                    <TableCell>{c.updated}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={c.active}
+                        disabled={c.code === BASE_CURRENCY}
+                        aria-label={`${c.code} available for new projects`}
+                        onChange={(_, d) => setList(list.map((x) => (x.code === c.code ? { ...x, active: d.checked } : x)))}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <Caption1 className={s.muted}>
+            Switching a currency off hides it for new projects only; existing projects keep their amounts. Rates shown are examples.
+          </Caption1>
+        </Section>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Section title="Add a currency">
+            <div className={s.form}>
+              <div className={s.row2} style={{ alignItems: 'start' }}>
+                <Field label="ISO code" required hint="3 letters, for example TRY" validationState={code && !codeOk ? 'error' : 'none'} validationMessage={code && !codeOk ? 'Not a recognised ISO 4217 code.' : undefined}>
+                  <Input value={code} maxLength={3} onChange={(_, d) => setCode(d.value.toUpperCase().replace(/[^A-Z]/g, ''))} />
+                </Field>
+                <Field label="Name" required>
+                  <Input value={name} onChange={(_, d) => setName(d.value)} placeholder="e.g. Turkish lira" />
+                </Field>
+              </div>
+              <Field label="1 unit in EUR" required hint="How many euros one unit is worth.">
+                <Input value={rate} onChange={(_, d) => setRate(d.value)} type="number" step="0.0001" min="0" />
+              </Field>
+              <Button icon={<Add20Regular />} onClick={add}>
+                Add currency
+              </Button>
+            </div>
+          </Section>
+          <Section title="Keeping rates current">
+            <Body1>Enter rates monthly, or paste them from your finance team's rate sheet. Reports show the rate date they used.</Body1>
+            <Caption1 className={s.muted}>Automatic import from the European Central Bank is possible later if IT allows the app to reach that site.</Caption1>
+          </Section>
+        </div>
+      </div>
     </>
   );
 }

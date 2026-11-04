@@ -52,6 +52,38 @@ export const users: User[] = [
 export const owners = users.filter((u) => u.role === 'manager' || u.role === 'specialist');
 export const userById = (id: string) => users.find((u) => u.id === id)!;
 
+export interface Currency {
+  code: string; // ISO 4217
+  name: string;
+  rateToBase: number; // value of 1 unit in the base currency (EUR)
+  active: boolean;
+  updated: string;
+}
+
+export const BASE_CURRENCY = 'EUR';
+
+// Example exchange rates for the preview. In the app an administrator enters or imports them.
+export const currencies: Currency[] = [
+  { code: 'EUR', name: 'Euro', rateToBase: 1, active: true, updated: '2026-11-03' },
+  { code: 'USD', name: 'US dollar', rateToBase: 0.86, active: true, updated: '2026-11-03' },
+  { code: 'GBP', name: 'Pound sterling', rateToBase: 1.15, active: true, updated: '2026-11-03' },
+  { code: 'CHF', name: 'Swiss franc', rateToBase: 1.07, active: true, updated: '2026-11-03' },
+  { code: 'RON', name: 'Romanian leu', rateToBase: 0.197, active: true, updated: '2026-11-03' },
+  { code: 'PLN', name: 'Polish złoty', rateToBase: 0.235, active: true, updated: '2026-11-03' },
+  { code: 'CZK', name: 'Czech koruna', rateToBase: 0.041, active: false, updated: '2026-11-03' },
+  { code: 'HUF', name: 'Hungarian forint', rateToBase: 0.0026, active: false, updated: '2026-11-03' },
+  { code: 'SEK', name: 'Swedish krona', rateToBase: 0.091, active: false, updated: '2026-11-03' },
+  { code: 'NOK', name: 'Norwegian krone', rateToBase: 0.086, active: false, updated: '2026-11-03' },
+  { code: 'DKK', name: 'Danish krone', rateToBase: 0.134, active: false, updated: '2026-11-03' },
+  { code: 'JPY', name: 'Japanese yen', rateToBase: 0.0058, active: false, updated: '2026-11-03' },
+  { code: 'CNY', name: 'Chinese yuan', rateToBase: 0.12, active: false, updated: '2026-11-03' },
+  { code: 'CAD', name: 'Canadian dollar', rateToBase: 0.62, active: false, updated: '2026-11-03' },
+  { code: 'AUD', name: 'Australian dollar', rateToBase: 0.57, active: false, updated: '2026-11-03' },
+];
+
+/** Converts an amount to the base currency (EUR) for portfolio totals. */
+export const toBase = (amount: number, code: string) => amount * (currencies.find((c) => c.code === code)?.rateToBase ?? 1);
+
 export const categories = [
   'IT Hardware',
   'Software & SaaS',
@@ -148,6 +180,7 @@ export interface Project {
   modified: string;
   target: string;
   completed?: string;
+  currency: string;
   estSpend: number;
   savings: number;
   costAvoidance: number;
@@ -263,8 +296,11 @@ function generateProjects(): Project[] {
         stage = Math.max(0, Math.min(stages - 2, Math.floor(progress * (stages - 1))));
         status = rand() < 0.08 ? 'On hold' : stage === 0 && rand() < 0.4 ? 'Draft' : 'In progress';
       }
+      const r = rand();
+      const currency = r < 0.6 ? 'EUR' : r < 0.75 ? 'USD' : r < 0.87 ? 'RON' : r < 0.92 ? 'GBP' : r < 0.96 ? 'PLN' : 'CHF';
+      const rate = currencies.find((c) => c.code === currency)!.rateToBase;
       const estSpend =
-        Math.round((s.scope === 'support' ? between(20, 400) : between(60, 1800)) * 1000 / 1000) * 1000;
+        Math.round(((s.scope === 'support' ? between(20, 400) : between(60, 1800)) * 1000) / rate / 1000) * 1000;
       const done = status === 'Completed';
       const savingsRate = s.scope === 'competitive' ? between(0.04, 0.16) : s.scope === 'sole' ? between(0.02, 0.09) : between(0, 0.05);
       const savings = done ? Math.round((estSpend * savingsRate) / 100) * 100 : 0;
@@ -302,11 +338,12 @@ function generateProjects(): Project[] {
         stakeholderIds: [pick(users.filter((u) => u.role === 'stakeholder')).id],
         stage,
         status,
-        priority: estSpend > 900000 ? 'High' : estSpend > 250000 ? 'Medium' : 'Low',
+        priority: estSpend * rate > 900000 ? 'High' : estSpend * rate > 250000 ? 'Medium' : 'Low',
         created,
         modified,
         target,
         completed: done ? completed : undefined,
+        currency,
         estSpend,
         savings,
         costAvoidance,
@@ -329,6 +366,7 @@ if (flagship) {
     status: 'In progress',
     stage: 4,
     estSpend: 640000,
+    currency: 'EUR',
     savings: 0,
     completed: undefined,
     ownerId: 'u3',
@@ -534,14 +572,15 @@ export const auditLog = [
 ];
 
 // ----- Formatting helpers -----
-export const fmtMoney = (n: number, compact = false) =>
+export const fmtMoney = (n: number, compact = false, currency = BASE_CURRENCY) =>
   new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: 'EUR',
+    currency,
     maximumFractionDigits: compact ? 1 : 0,
     notation: compact ? 'compact' : 'standard',
   }).format(n);
 export const fmtDate = (iso?: string) =>
   iso ? new Date(iso + 'T00:00:00Z').toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '—';
-/** Short axis labels that stay distinct between ticks, e.g. €1.75m or €320k. */
-export const fmtAxis = (n: number) => (Math.abs(n) >= 1e6 ? `€${+(n / 1e6).toFixed(2)}m` : Math.abs(n) >= 1e3 ? `€${+(n / 1e3).toFixed(0)}k` : `€${n}`);
+/** Short axis labels that stay distinct between ticks, e.g. €1.75M or €320K. */
+export const fmtAxis = (n: number, currency = BASE_CURRENCY) =>
+  new Intl.NumberFormat('en-GB', { style: 'currency', currency, notation: 'compact', maximumSignificantDigits: 3 }).format(n);

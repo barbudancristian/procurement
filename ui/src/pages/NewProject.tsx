@@ -24,7 +24,9 @@ import {
 import { ArrowLeft20Regular, ArrowRight20Regular, Checkmark20Regular, Handshake24Regular, Lightbulb24Regular, Trophy24Regular } from '@fluentui/react-icons';
 import { PageHeader } from '../components/common';
 import {
+  BASE_CURRENCY,
   categories,
+  currencies,
   fmtMoney,
   owners,
   projects,
@@ -79,6 +81,7 @@ export function NewProject() {
   const [stakeholders, setStakeholders] = useState<string[]>([]);
   const [target, setTarget] = useState('');
   const [spend, setSpend] = useState('');
+  const [currency, setCurrency] = useState(BASE_CURRENCY);
   const [strategy, setStrategy] = useState('RFP');
   const [invited, setInvited] = useState<string[]>([]);
   const [incumbent, setIncumbent] = useState('');
@@ -132,6 +135,7 @@ export function NewProject() {
       created: TODAY,
       modified: TODAY,
       target,
+      currency,
       estSpend: Number(spend.replace(/[^0-9]/g, '')) || 0,
       savings: 0,
       costAvoidance: 0,
@@ -251,8 +255,19 @@ export function NewProject() {
         {step === 3 && scope === 'competitive' && (
           <>
             <div className={s.row2}>
-              <Field label="Estimated spend (EUR)" required validationState={req(!spend)} hint="Total contract value over the full term.">
+<Field label="Estimated spend" required validationState={req(!spend)} hint="Total contract value over the full term.">
                 <Input value={spend} onChange={(_, d) => setSpend(d.value)} placeholder="e.g. 450000" inputMode="numeric" />
+              </Field>
+<Field label="Currency" hint="Totals on the dashboard are converted to EUR.">
+                <Dropdown value={currency} selectedOptions={[currency]} onOptionSelect={(_, d) => setCurrency(d.optionValue ?? BASE_CURRENCY)}>
+                  {currencies
+                    .filter((c) => c.active)
+                    .map((c) => (
+                      <Option key={c.code} value={c.code} text={c.code}>
+                        {c.code} · {c.name}
+                      </Option>
+                    ))}
+                </Dropdown>
               </Field>
               <Field label="Sourcing strategy">
                 <Dropdown value={strategy} selectedOptions={[strategy]} onOptionSelect={(_, d) => setStrategy(d.optionValue ?? 'RFP')}>
@@ -297,7 +312,18 @@ export function NewProject() {
               <Field label="Current contract expiry">
                 <Input type="date" value={expiry} onChange={(_, d) => setExpiry(d.value)} />
               </Field>
-              <Field label="Current annual contract value (EUR)">
+<Field label="Currency" hint="Totals on the dashboard are converted to EUR.">
+                <Dropdown value={currency} selectedOptions={[currency]} onOptionSelect={(_, d) => setCurrency(d.optionValue ?? BASE_CURRENCY)}>
+                  {currencies
+                    .filter((c) => c.active)
+                    .map((c) => (
+                      <Option key={c.code} value={c.code} text={c.code}>
+                        {c.code} · {c.name}
+                      </Option>
+                    ))}
+                </Dropdown>
+              </Field>
+              <Field label="Current annual contract value">
                 <Input value={spend} onChange={(_, d) => setSpend(d.value)} inputMode="numeric" placeholder="e.g. 180000" />
               </Field>
               <Field label="Justification reason" required validationState={req(!reason)}>
@@ -338,9 +364,22 @@ export function NewProject() {
                 </Dropdown>
               </Field>
             </div>
-            <Field label="Expected benefit (EUR, optional)" hint="Estimated savings or commercial benefit, if any.">
-              <Input value={spend} onChange={(_, d) => setSpend(d.value)} inputMode="numeric" />
-            </Field>
+<div className={s.row2}>
+              <Field label="Expected benefit (optional)" hint="Estimated savings or commercial benefit, if any.">
+                <Input value={spend} onChange={(_, d) => setSpend(d.value)} inputMode="numeric" />
+              </Field>
+              <Field label="Currency" hint="Totals on the dashboard are converted to EUR.">
+                <Dropdown value={currency} selectedOptions={[currency]} onOptionSelect={(_, d) => setCurrency(d.optionValue ?? BASE_CURRENCY)}>
+                  {currencies
+                    .filter((c) => c.active)
+                    .map((c) => (
+                      <Option key={c.code} value={c.code} text={c.code}>
+                        {c.code} · {c.name}
+                      </Option>
+                    ))}
+                </Dropdown>
+              </Field>
+            </div>
           </>
         )}
 
@@ -358,12 +397,14 @@ export function NewProject() {
               <span>{category}</span>
               <span className={s.label}>Owner</span>
               <span>{owners.find((o) => o.id === owner)?.name}</span>
+              <span className={s.label}>Currency</span>
+              <span>{currency}</span>
               <span className={s.label}>Target date</span>
               <span>{target}</span>
               {spend && (
                 <>
                   <span className={s.label}>{scope === 'support' ? 'Expected benefit' : 'Estimated spend'}</span>
-                  <span>{fmtMoney(Number(spend.replace(/[^0-9]/g, '')) || 0)}</span>
+                  <span>{fmtMoney(Number(spend.replace(/[^0-9]/g, '')) || 0, false, currency)}</span>
                 </>
               )}
               {scope === 'sole' && (

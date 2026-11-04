@@ -25,6 +25,7 @@ import {
   fmtDate,
   fmtMoney,
   owners,
+  toBase,
   projects,
   scopeLabel,
   TODAY,
@@ -85,7 +86,7 @@ export function Projects() {
         case 'title': return p.title;
         case 'owner': return userById(p.ownerId).name;
         case 'status': return p.status;
-        case 'estSpend': return p.estSpend;
+        case 'estSpend': return toBase(p.estSpend, p.currency);
         case 'target': return p.target;
         case 'deadline': return p.nextDeadline?.date ?? '9999';
       }
@@ -204,7 +205,7 @@ export function Projects() {
                       <Avatar name={userById(p.ownerId).name} size={20} /> {userById(p.ownerId).name}
                     </span>
                   </TableCell>
-                  <TableCell className={s.num}>{fmtMoney(p.estSpend)}</TableCell>
+                  <TableCell className={s.num}>{fmtMoney(p.estSpend, false, p.currency)}</TableCell>
                   <TableCell>
                     {p.nextDeadline ? (
                       <span className={late ? s.late : undefined}>

@@ -24,7 +24,7 @@ import {
 } from '@fluentui/react-components';
 import { Add20Regular, Dismiss24Regular, Search20Regular, Star16Filled } from '@fluentui/react-icons';
 import { PageHeader, ScopeBadge, StatusBadge } from '../components/common';
-import { categories, fmtMoney, projects, suppliers, type Supplier } from '../data/mock';
+import { categories, fmtMoney, projects, suppliers, toBase, type Supplier } from '../data/mock';
 import { usePermissions } from '../state/AppContext';
 
 const useStyles = makeStyles({
@@ -42,7 +42,7 @@ const useStyles = makeStyles({
 const stats = (sup: Supplier) => {
   const invited = projects.filter((p) => p.supplierIds.includes(sup.id));
   const awarded = projects.filter((p) => p.awardedSupplierId === sup.id);
-  return { invited, awarded, value: awarded.reduce((a, p) => a + p.estSpend - p.savings, 0) };
+  return { invited, awarded, value: awarded.reduce((a, p) => a + toBase(p.estSpend - p.savings, p.currency), 0) };
 };
 
 export function Suppliers() {
@@ -134,7 +134,7 @@ export function Suppliers() {
                 <span>
                   {stats(open).invited.length} invitations, {stats(open).awarded.length} awards
                 </span>
-                <span className={s.muted}>Awarded value</span>
+                <span className={s.muted}>Awarded value (EUR)</span>
                 <span>{fmtMoney(stats(open).value)}</span>
               </div>
               <Subtitle2>Project history</Subtitle2>

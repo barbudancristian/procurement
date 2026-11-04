@@ -128,6 +128,8 @@ const useStyles = makeStyles({
   pill: { display: 'inline-flex', alignItems: 'center', gap: '6px' },
 });
 
+const money = (p: Project, n: number, compact = false) => fmtMoney(n, compact, p.currency);
+
 type TabKey = 'overview' | 'suppliers' | 'evaluation' | 'negotiation' | 'justification' | 'activities' | 'documents' | 'discussion' | 'history';
 
 export function ProjectWorkspace() {
@@ -282,7 +284,7 @@ export function ProjectWorkspace() {
           <Fact label="Created" value={fmtDate(p.created)} />
           <Fact label="Last modified" value={fmtDate(p.modified)} />
           <Fact label="Target completion" value={<>{fmtDate(p.target)} {!closed && p.target < TODAY && <Badge color="danger" size="small">late</Badge>}</>} />
-          <Fact label={p.scope === 'support' ? 'Expected benefit' : 'Estimated spend'} value={fmtMoney(p.estSpend)} />
+          <Fact label={p.scope === 'support' ? 'Expected benefit' : 'Estimated spend'} value={money(p, p.estSpend)} />
           <Fact label="Priority" value={<PriorityText priority={p.priority} />} />
         </div>
       </Section>
@@ -403,9 +405,9 @@ function Overview({ p }: { p: Project }) {
               <span className={s.muted}>Outcome</span>
               <span>{p.awardedSupplierId ? `Awarded to ${supplierById(p.awardedSupplierId).name}` : 'Advice delivered and accepted'}</span>
               <span className={s.muted}>Negotiated savings</span>
-              <span className={s.best}>{fmtMoney(p.savings)}</span>
+              <span className={s.best}>{money(p, p.savings)}</span>
               <span className={s.muted}>Cost avoidance</span>
-              <span>{fmtMoney(p.costAvoidance)}</span>
+              <span>{money(p, p.costAvoidance)}</span>
               <span className={s.muted}>Duration</span>
               <span>{p.completed ? `${daysBetween(p.created, p.completed)} days` : '—'}</span>
             </div>
@@ -505,10 +507,10 @@ function SuppliersTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
                     </Badge>
                   </TableCell>
                   <TableCell>{o.status === 'Submitted' ? fmtDate(o.submitted) : '—'}</TableCell>
-                  {perm.canSeeConfidential && <TableCell className={s.num}>{o.status === 'Submitted' ? fmtMoney(o.firstOffer) : '—'}</TableCell>}
+                  {perm.canSeeConfidential && <TableCell className={s.num}>{o.status === 'Submitted' ? money(p, o.firstOffer) : '—'}</TableCell>}
                   {perm.canSeeConfidential && (
                     <TableCell className={s.num}>
-                      {o.status === 'Submitted' ? <span className={o.bestOffer === lowest ? s.best : undefined}>{fmtMoney(o.bestOffer)}</span> : '—'}
+                      {o.status === 'Submitted' ? <span className={o.bestOffer === lowest ? s.best : undefined}>{money(p, o.bestOffer)}</span> : '—'}
                     </TableCell>
                   )}
                   <TableCell>{o.status === 'Submitted' ? `${o.paymentDays} days` : '—'}</TableCell>
@@ -655,14 +657,14 @@ function NegotiationTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
   const chart = useCallback(
     (c: ChartColors) => ({
       grid: { left: 8, right: 96, top: 16, bottom: 8, containLabel: true },
-      tooltip: { trigger: 'axis' as const, valueFormatter: (v: unknown) => fmtMoney(Number(v)) },
+      tooltip: { trigger: 'axis' as const, valueFormatter: (v: unknown) => money(p, Number(v)) },
       xAxis: { type: 'category' as const, data: n.rounds.map((r) => `Round ${r.no}`), ...axisStyle(c), splitLine: { show: false } },
       yAxis: {
         type: 'value' as const,
         min: Math.floor((Math.min(n.target, ...n.rounds.map((r) => r.price)) * 0.97) / 10000) * 10000,
         ...axisStyle(c),
         axisLine: { show: false },
-        axisLabel: { color: c.muted, fontSize: 11, formatter: (v: number) => fmtAxis(v) },
+        axisLabel: { color: c.muted, fontSize: 11, formatter: (v: number) => fmtAxis(v, p.currency) },
       },
       series: [
         {
@@ -672,7 +674,7 @@ function NegotiationTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
           lineStyle: { width: 2, color: c.series[0] },
           itemStyle: { color: c.series[0] },
           symbolSize: 9,
-          label: { show: true, position: 'top' as const, color: c.text, fontSize: 11, formatter: (v: { value?: unknown }) => fmtMoney(Number(v.value), true) },
+          label: { show: true, position: 'top' as const, color: c.text, fontSize: 11, formatter: (v: { value?: unknown }) => money(p, Number(v.value), true) },
           markLine: {
             symbol: 'none',
             silent: true,
@@ -711,7 +713,7 @@ function NegotiationTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
                   <TableRow key={r.no}>
                     <TableCell>{r.no}</TableCell>
                     <TableCell>{fmtDate(r.date)}</TableCell>
-                    <TableCell className={s.num}>{fmtMoney(r.price)}</TableCell>
+                    <TableCell className={s.num}>{money(p, r.price)}</TableCell>
                     <TableCell>{r.terms}</TableCell>
                     <TableCell>{r.notes}</TableCell>
                   </TableRow>
@@ -733,7 +735,7 @@ function NegotiationTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
               </TableHeader>
               <TableBody>
                 {[
-                  ['Annual price', fmtMoney(n.baseline), fmtMoney(n.target), fmtMoney(latest.price)],
+                  ['Annual price', money(p, n.baseline), money(p, n.target), money(p, latest.price)],
                   ['Payment terms', '30 days', '60 days', latest.no >= 3 ? '60 days' : latest.no === 2 ? '45 days' : '30 days'],
                   ['Price indexation', 'CPI + 2%', 'CPI, capped at 3%', latest.no >= 3 ? 'CPI, capped at 3%' : latest.no === 2 ? 'CPI' : 'CPI + 2%'],
                   ['Contract term', '1 year', '3 years', latest.no >= 3 ? '3 years' : '1 year'],
@@ -755,20 +757,20 @@ function NegotiationTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
       </div>
       <div className={s.stack}>
         <Section title="Savings so far">
-          <span className={s.savings}>{fmtMoney(savings)}</span>
+          <span className={s.savings}>{money(p, savings)}</span>
           <Caption1 className={s.muted}>
-            Current price {fmtMoney(n.baseline)} minus latest offer {fmtMoney(latest.price)} ({((savings / n.baseline) * 100).toFixed(1)}%)
+            Current price {money(p, n.baseline)} minus latest offer {money(p, latest.price)} ({((savings / n.baseline) * 100).toFixed(1)}%)
           </Caption1>
           <Divider />
           <Subtitle2>Cost avoidance</Subtitle2>
-          <Text>{fmtMoney(avoidance)}</Text>
+          <Text>{money(p, avoidance)}</Text>
           <Caption1 className={s.muted}>Increase requested in round 1 and withdrawn.</Caption1>
           <Divider />
           <Subtitle2>Gap to target</Subtitle2>
-          <Text>{fmtMoney(Math.max(0, latest.price - n.target))}</Text>
+          <Text>{money(p, Math.max(0, latest.price - n.target))}</Text>
         </Section>
         <Section title="Negotiation objectives">
-          <Body1>1. Hold annual price at or below {fmtMoney(n.target)}.</Body1>
+          <Body1>1. Hold annual price at or below {money(p, n.target)}.</Body1>
           <Body1>2. Move payment terms to 60 days.</Body1>
           <Body1>3. Cap indexation at CPI with a 3% ceiling.</Body1>
           <Body1>4. Raise availability commitment to 99.5% with service credits.</Body1>
@@ -795,9 +797,9 @@ function JustificationTab({ p }: { p: Project }) {
           <span className={s.muted}>Alternatives considered</span>
           <span>Third-party maintenance (2 providers contacted; neither supports the current version). Replacement project (planned for 2028 roadmap).</span>
           <span className={s.muted}>Current contract value</span>
-          <span>{fmtMoney(p.estSpend)} per year</span>
+          <span>{money(p, p.estSpend)} per year</span>
           <span className={s.muted}>Historical spend (3 years)</span>
-          <span>{fmtMoney(p.estSpend * 2.85)}</span>
+          <span>{money(p, p.estSpend * 2.85)}</span>
           <span className={s.muted}>Contract expiry</span>
           <span>{fmtDate(p.target)}</span>
         </div>
@@ -874,7 +876,7 @@ function ActivitiesTab({ p, canEdit }: { p: Project; canEdit: boolean }) {
           <Textarea rows={5} readOnly={!canEdit} defaultValue={p.stage >= 3 ? 'Recommend a phased transition: 20% of the fleet electrified by end of 2027, focusing on urban pool cars. Leasing preferred over purchase.' : ''} placeholder="Summarise conclusions for the requester." />
         </Section>
         <Section title="Commercial benefit">
-          <Text>{fmtMoney(p.estSpend * 0.04)} estimated benefit</Text>
+          <Text>{money(p, p.estSpend * 0.04)} estimated benefit</Text>
           <Caption1 className={s.muted}>Recorded as cost avoidance when the request is closed.</Caption1>
         </Section>
       </div>

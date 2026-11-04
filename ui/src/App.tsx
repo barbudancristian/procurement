@@ -10,7 +10,7 @@ import { Suppliers } from './pages/Suppliers';
 import { Reports } from './pages/Reports';
 import { Documents } from './pages/Documents';
 import { ClientPortal } from './pages/ClientPortal';
-import { AuditAdmin, BrandingAdmin, ConnectionAdmin, UsersAdmin, WorkflowsAdmin } from './pages/admin/Admin';
+import { AuditAdmin, BrandingAdmin, ConnectionAdmin, CurrenciesAdmin, UsersAdmin, WorkflowsAdmin } from './pages/admin/Admin';
 
 // The single-file design preview runs inside a hosted frame where the URL hash is reserved,
 // so it keeps navigation in memory. The real app uses hash routing.
@@ -42,6 +42,7 @@ function Routed() {
                   <Route path="/admin/users" element={<UsersAdmin />} />
                   <Route path="/admin/workflows" element={<WorkflowsAdmin />} />
                   <Route path="/admin/branding" element={<BrandingAdmin />} />
+                  <Route path="/admin/currencies" element={<CurrenciesAdmin />} />
                   <Route path="/admin/connection" element={<ConnectionAdmin />} />
                 </>
               )}
