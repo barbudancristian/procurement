@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sourcing Hub</title>
+    <style>
+      :root { color-scheme: light; --app-bg: #f5f6f8; }
+      @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --app-bg: #1b1b1d; } }
+      :root[data-theme="dark"] { color-scheme: dark; --app-bg: #1b1b1d; }
+      html, body, #root { height: 100%; margin: 0; }
+      h1, h2, h3 { margin: 0; }
+      table.fui-Table { table-layout: auto; }
+      body { background: var(--app-bg); font-family: "Segoe UI", "Segoe UI Web (West European)", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", sans-serif; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
