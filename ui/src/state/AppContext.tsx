@@ -4,16 +4,36 @@ import { defaultBranding, makeThemes, type Branding } from '../theme/branding';
 import { users, type Role, type User } from '../data/mock';
 import { getHost, roleFromClaims, type Host, type HostConfig, type HostSession } from '../sp/host';
 import { GraphClient } from '../sp/graph';
+import { LocalStore, SharePointStore, type DataStore } from '../sp/store';
 
-/** Set when the app runs inside the Windows desktop app and the user is signed in. */
+/** Set when the app runs inside the Windows desktop app with real data (SharePoint or local). */
 export interface LiveSession {
+  mode: 'sharepoint' | 'local';
   host: Host;
   session: HostSession;
   config: HostConfig;
-  graph: GraphClient;
+  /** Only in SharePoint mode. */
+  graph: GraphClient | null;
+  /** Null in SharePoint mode until a site is chosen. */
+  store: DataStore | null;
 }
 
-export type StartState = { kind: 'demo' } | { kind: 'starting' } | { kind: 'ready' } | { kind: 'no-role'; name: string } | { kind: 'error'; message: string };
+export type StartState =
+  | { kind: 'demo' }
+  | { kind: 'starting' }
+  | { kind: 'choose'; sharePointAvailable: boolean }
+  | { kind: 'ready' }
+  | { kind: 'no-role'; name: string }
+  | { kind: 'error'; message: string };
+
+function makeLive(host: Host, session: HostSession, config: HostConfig): LiveSession {
+  if (config.mode === 'local') {
+    const store = new LocalStore({ read: () => host.localDbRead(), write: (c) => host.localDbWrite(c) }, session.name);
+    return { mode: 'local', host, session, config, graph: null, store };
+  }
+  const graph = new GraphClient({ token: () => host.token() });
+  return { mode: 'sharepoint', host, session, config, graph, store: config.siteUrl ? new SharePointStore(graph, config.siteUrl) : null };
+}
 
 interface AppState {
   branding: Branding;
@@ -80,6 +100,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           setStart({ kind: 'demo' });
           return;
         }
+        if (config.mode === null) {
+          setStart({ kind: 'choose', sharePointAvailable: config.sharePointAvailable });
+          return;
+        }
         const session = await host.session();
         if (cancelled) return;
         const r = roleFromClaims(session.roles);
@@ -88,7 +112,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         setRole(r);
-        setLive({ host, session, config, graph: new GraphClient({ token: () => host.token() }) });
+        setLive(makeLive(host, session, config));
         setStart({ kind: 'ready' });
       } catch (e) {
         if (!cancelled) setStart({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
@@ -103,7 +127,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const currentUser: User = live
     ? { ...demoUser, id: live.session.username, name: live.session.name, email: live.session.username, role }
     : demoUser;
-  const setLiveConfig = (config: HostConfig) => setLive((l) => (l ? { ...l, config } : l));
+  const setLiveConfig = (config: HostConfig) => setLive((l) => (l ? makeLive(l.host, l.session, config) : l));
   return (
     <Ctx.Provider
       value={{ branding, setBranding, dark, setDark, theme, role, setRole, currentUser, live, setLiveConfig, start, retryStart: () => setAttempt((a) => a + 1) }}

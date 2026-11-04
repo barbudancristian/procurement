@@ -23,6 +23,7 @@ import { useApp, type LiveSession } from '../../state/AppContext';
 import { setUpSite, testConnection, type ConnectionReport, type SetupStep } from '../../sp/provision';
 import { lists, SCHEMA_VERSION } from '../../sp/schema';
 import { sitePathFromUrl } from '../../sp/graph';
+import { ChangeStorageButton } from './Storage';
 
 const useStyles = makeStyles({
   grid: { display: 'grid', gridTemplateColumns: 'minmax(0,3fr) minmax(0,2fr)', gap: '16px', '@media (max-width: 1000px)': { gridTemplateColumns: '1fr' } },
@@ -39,6 +40,7 @@ const statusLabel: Record<SetupStep['status'], string> = { created: 'Created', u
 export function LiveConnectionAdmin({ live }: { live: LiveSession }) {
   const s = useStyles();
   const { setLiveConfig } = useApp();
+  const graph = live.graph!;
   const [url, setUrl] = useState(live.config.siteUrl ?? '');
   const [busy, setBusy] = useState<'' | 'test' | 'setup' | 'save'>('');
   const [error, setError] = useState('');
@@ -69,12 +71,12 @@ export function LiveConnectionAdmin({ live }: { live: LiveSession }) {
     }
   };
 
-  const test = () => guard('test', async () => setReport(await testConnection(live.graph, url)));
+  const test = () => guard('test', async () => setReport(await testConnection(graph, url)));
   const setup = () =>
     guard('setup', async () => {
       setSteps([]);
-      await setUpSite(live.graph, url, (step) => setSteps((prev) => [...prev, step]));
-      setReport(await testConnection(live.graph, url));
+      await setUpSite(graph, url, (step) => setSteps((prev) => [...prev, step]));
+      setReport(await testConnection(graph, url));
     });
   const save = () =>
     guard('save', async () => {
@@ -87,7 +89,7 @@ export function LiveConnectionAdmin({ live }: { live: LiveSession }) {
 
   return (
     <>
-      <PageHeader title="SharePoint Connection" subtitle="Where the app stores its data and documents. Only administrators can change this." />
+      <PageHeader title="SharePoint Connection" subtitle="Where the app stores its data and documents. Only administrators can change this." actions={<ChangeStorageButton />} />
       <div className={s.grid}>
         <Section title="Procurement site">
           <div className={s.form}>

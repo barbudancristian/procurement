@@ -10,6 +10,7 @@ import { Suppliers } from './pages/Suppliers';
 import { Reports } from './pages/Reports';
 import { Documents } from './pages/Documents';
 import { ClientPortal } from './pages/ClientPortal';
+import { StorageChoice } from './pages/admin/Storage';
 import { AuditAdmin, BrandingAdmin, ConnectionAdmin, CurrenciesAdmin, UsersAdmin, WorkflowsAdmin } from './pages/admin/Admin';
 
 // The single-file design preview runs inside a hosted frame where the URL hash is reserved,
@@ -21,6 +22,7 @@ const gate: React.CSSProperties = { height: '100%', display: 'flex', flexDirecti
 /** Shown in the desktop app until the user is signed in with a Sourcing Hub role. */
 function StartGate() {
   const { start, retryStart, branding } = useApp();
+  if (start.kind === 'choose') return <StorageChoice sharePointAvailable={start.sharePointAvailable} />;
   if (start.kind === 'starting') return <div style={gate}><Spinner label={`Signing in to ${branding.appName}…`} /></div>;
   if (start.kind === 'no-role')
     return (

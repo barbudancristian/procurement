@@ -57,6 +57,7 @@ import { auditLog, BASE_CURRENCY, currencies, projects, roleLabel, scopeLabel, u
 import { contrast, defaultBranding, type Branding } from '../../theme/branding';
 import { useApp } from '../../state/AppContext';
 import { LiveConnectionAdmin } from './LiveConnection';
+import { LocalStorageAdmin } from './Storage';
 import { saveDemoDb } from '../../data/demoDb';
 
 const useStyles = makeStyles({
@@ -452,6 +453,7 @@ const setupSteps = [
 
 export function ConnectionAdmin() {
   const { live } = useApp();
+  if (live?.mode === 'local') return <LocalStorageAdmin live={live} />;
   return live ? <LiveConnectionAdmin live={live} /> : <DemoConnectionAdmin />;
 }
 

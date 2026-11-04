@@ -13,9 +13,24 @@ export interface HostSession {
   roles: string[];
 }
 
+export type StorageMode = 'sharepoint' | 'local' | 'demo';
+
+export interface LocalDbInfo {
+  path: string;
+  sizeBytes: number;
+  lastSaved: string | null;
+  backups: number;
+}
+
 export interface HostConfig {
-  /** "demo": no SharePoint and no sign-in; the app runs on its built-in demo database. */
-  mode?: 'live' | 'demo';
+  /**
+   * Where data is kept. "sharepoint": the team site. "local": one database file on
+   * this computer for a single user. "demo": sample data for presentations.
+   * null: not chosen yet; the app asks on first start.
+   */
+  mode: StorageMode | null;
+  /** True when IT has configured the Microsoft sign-in, so SharePoint can be chosen. */
+  sharePointAvailable: boolean;
   siteUrl: string | null;
   /** "machine": set by IT for every user. "user": set in the app by this user. */
   siteUrlSource: 'machine' | 'user' | null;
@@ -38,6 +53,11 @@ export interface Host {
   setSiteUrl(url: string): Promise<HostConfig>;
   signOut(): Promise<void>;
   openExternal(url: string): Promise<void>;
+  /** Saves the storage choice for this Windows user and restarts the interface. */
+  setMode(mode: StorageMode | null): Promise<void>;
+  localDbRead(): Promise<string | null>;
+  localDbWrite(content: string): Promise<void>;
+  localDbInfo(): Promise<LocalDbInfo>;
 }
 
 export function createHost(webview: WebView2, timeoutMs = 120_000): Host {
@@ -72,6 +92,10 @@ export function createHost(webview: WebView2, timeoutMs = 120_000): Host {
     setSiteUrl: (url) => call<HostConfig>('setSiteUrl', { url }),
     signOut: () => call<void>('signOut'),
     openExternal: (url) => call<void>('openExternal', { url }),
+    setMode: (mode) => call<void>('setMode', { mode }),
+    localDbRead: () => call<string | null>('localdb.read'),
+    localDbWrite: (content) => call<void>('localdb.write', { content }),
+    localDbInfo: () => call<LocalDbInfo>('localdb.info'),
   };
 }
 

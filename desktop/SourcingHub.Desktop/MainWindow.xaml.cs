@@ -21,9 +21,11 @@ public partial class MainWindow : Window
     readonly AppConfig _config = AppConfig.Load();
     AuthService? _auth;
 
-    // Demo mode runs on the built-in demo database with no sign-in and no SharePoint.
-    // It is used when the app is started with --demo or has not been configured yet.
-    bool _demo;
+    // Storage mode: "sharepoint", "local" (one database file, single user), "demo"
+    // (sample data, started with --demo) or null (the user has not chosen yet).
+    string? _mode;
+    LocalDatabase? _localDb;
+    readonly bool _demoRequested = Environment.GetCommandLineArgs().Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase));
 
     static string AppVersion =>
         Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
@@ -32,15 +34,32 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Loaded += async (_, _) => await StartAsync();
+        Closed += (_, _) => _localDb?.Dispose();
+    }
+
+    void ApplyMode()
+    {
+        _mode = _config.EffectiveMode(_demoRequested);
+        if (_mode == "sharepoint")
+            _auth ??= new AuthService(_config, () => new WindowInteropHelper(this).Handle);
+        if (_mode == "local")
+            _localDb ??= new LocalDatabase(_config.LocalDatabaseFile);
+        else
+        {
+            _localDb?.Dispose();
+            _localDb = null;
+        }
+        Title = _mode switch
+        {
+            "demo" => "Sourcing Hub (demo)",
+            "local" => "Sourcing Hub (local database)",
+            _ => "Sourcing Hub",
+        };
     }
 
     async Task StartAsync()
     {
-        var askedForDemo = Environment.GetCommandLineArgs().Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase));
-        _demo = askedForDemo || _config.Demo || !_config.IsValid(out _);
-        if (!_demo)
-            _auth = new AuthService(_config, () => new WindowInteropHelper(this).Handle);
-        Title = _demo ? "Sourcing Hub (demo)" : "Sourcing Hub";
+        ApplyMode();
 
         try
         {
@@ -98,8 +117,12 @@ public partial class MainWindow : Window
             var payload = root.TryGetProperty("payload", out var p) ? p : default;
             object? result = type switch
             {
-                "session" => await Auth().SessionAsync(),
+                "session" => _mode == "local" ? LocalSession() : await Auth().SessionAsync(),
                 "token" => (await Auth().AcquireAsync()).AccessToken,
+                "setMode" => SetMode(payload.TryGetProperty("mode", out var m) ? m.GetString() : null),
+                "localdb.read" => await LocalDb().ReadAsync(),
+                "localdb.write" => await WriteLocalAsync(payload.GetProperty("content").GetString() ?? ""),
+                "localdb.info" => LocalDb().Info(),
                 "config" => ConfigView(),
                 "setSiteUrl" => SetSiteUrl(payload.GetProperty("url").GetString() ?? ""),
                 "signOut" => await SignOutAsync(),
@@ -116,19 +139,49 @@ public partial class MainWindow : Window
         {
             Reply(new { id, ok = false, error = $"Microsoft sign-in failed ({ex.ErrorCode}). If this continues, ask IT to check the app registration." });
         }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Reply(new { id, ok = false, error = $"The local database could not be saved: {ex.Message}" });
+        }
         catch (Exception ex) when (ex is InvalidOperationException or JsonException or KeyNotFoundException)
         {
             Reply(new { id, ok = false, error = ex.Message });
         }
     }
 
-    AuthService Auth() => _auth ?? throw new InvalidOperationException("Sign-in is not available in demo mode.");
+    AuthService Auth() => _mode == "sharepoint" && _auth is not null ? _auth : throw new InvalidOperationException("Microsoft sign-in is only used with SharePoint storage.");
+
+    LocalDatabase LocalDb() => _localDb ?? throw new InvalidOperationException("The local database is not in use.");
+
+    async Task<object?> WriteLocalAsync(string content)
+    {
+        await LocalDb().WriteAsync(content);
+        return null;
+    }
+
+    // In local mode the Windows user is the only user and has every permission.
+    static object LocalSession() => new
+    {
+        name = Environment.UserName,
+        username = $"{Environment.UserDomainName}\\{Environment.UserName}",
+        tenantId = "",
+        roles = new[] { "Sourcing.Admin" },
+    };
+
+    object? SetMode(string? mode)
+    {
+        _config.SaveUserMode(string.IsNullOrWhiteSpace(mode) ? null : mode);
+        ApplyMode();
+        _ = Dispatcher.InvokeAsync(() => Web.CoreWebView2.Reload());
+        return null;
+    }
 
     void Reply(object message) => Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message, Json));
 
     object ConfigView() => new
     {
-        mode = _demo ? "demo" : "live",
+        mode = _mode,
+        sharePointAvailable = _config.SharePointConfigured,
         siteUrl = _config.SiteUrl,
         siteUrlSource = _config.SiteUrlSource,
         appVersion = AppVersion,

@@ -52,9 +52,11 @@ import {
   Money20Regular,
   Globe20Regular,
   ArrowReset20Regular,
+  Database20Regular,
 } from '@fluentui/react-icons';
 import { useApp, usePermissions } from '../state/AppContext';
 import { resetDemoDb } from '../data/demoDb';
+import { getHost } from '../sp/host';
 import { projects, roleLabel, TODAY, type Role } from '../data/mock';
 
 const useStyles = makeStyles({
@@ -177,7 +179,9 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className={s.root}>
       <div className={s.banner}>
         {live ? (
-          <>Signed in and connected. Project, supplier and report screens still show sample data until the next update.</>
+          <>
+            {live.mode === 'local' ? 'Local database on this computer.' : 'Signed in to SharePoint.'} Project, supplier and report screens still show sample data until the next update.
+          </>
         ) : (
           <>
             Demo mode with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do. Changes are kept on this computer only.
@@ -236,7 +240,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <MenuList>
                   <MenuGroup>
                     <MenuGroupHeader>{live.session.username}</MenuGroupHeader>
-                    <MenuItem onClick={() => void live.host.signOut()}>Sign out</MenuItem>
+                    {live.mode === 'sharepoint' && <MenuItem onClick={() => void live.host.signOut()}>Sign out</MenuItem>}
                   </MenuGroup>
                 </MenuList>
               ) : (
@@ -259,6 +263,11 @@ export function Shell({ children }: { children: ReactNode }) {
                 <MenuItem icon={<ArrowReset20Regular />} onClick={() => setConfirmReset(true)}>
                   Reset demo data
                 </MenuItem>
+                {getHost() && (
+                  <MenuItem icon={<Database20Regular />} onClick={() => void getHost()!.setMode(null)}>
+                    Leave the demo
+                  </MenuItem>
+                )}
               </MenuList>
               )}
             </MenuPopover>
@@ -305,7 +314,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 <Item to="/admin/workflows" icon={<Flow20Regular />} label="Workflows" onClick={close} />
                 <Item to="/admin/currencies" icon={<Money20Regular />} label="Currencies" onClick={close} />
                 <Item to="/admin/branding" icon={<PaintBrush20Regular />} label="Branding" onClick={close} />
-                <Item to="/admin/connection" icon={<PlugConnected20Regular />} label="SharePoint Connection" onClick={close} />
+                <Item to="/admin/connection" icon={<PlugConnected20Regular />} label={live?.mode === 'local' ? 'Data storage' : 'SharePoint Connection'} onClick={close} />
               </>
             )}
             {perm.canSeeAudit && <Item to="/admin/audit" icon={<History20Regular />} label="Audit Log" onClick={close} />}
