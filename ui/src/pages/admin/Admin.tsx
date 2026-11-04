@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import {
   Avatar,
   Badge,
@@ -56,6 +56,9 @@ import { PageHeader, Section } from '../../components/common';
 import { auditLog, BASE_CURRENCY, currencies, projects, roleLabel, scopeLabel, users, workflows, type Currency, type Role, type Scope, type User } from '../../data/mock';
 import { contrast, defaultBranding, type Branding } from '../../theme/branding';
 import { useApp } from '../../state/AppContext';
+import { LiveConnectionAdmin } from './LiveConnection';
+import { LocalStorageAdmin } from './Storage';
+import { saveDemoDb } from '../../data/demoDb';
 
 const useStyles = makeStyles({
   card: { backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke2}`, overflowX: 'auto' },
@@ -83,6 +86,11 @@ const useStyles = makeStyles({
 export function UsersAdmin() {
   const s = useStyles();
   const [list, setList] = useState<User[]>(users);
+  useEffect(() => {
+    if (list === users) return;
+    users.splice(0, users.length, ...list);
+    saveDemoDb();
+  }, [list]);
   const [tab, setTab] = useState<'internal' | 'clients'>('internal');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<Role>('specialist');
@@ -444,6 +452,12 @@ const setupSteps = [
 ];
 
 export function ConnectionAdmin() {
+  const { live } = useApp();
+  if (live?.mode === 'local') return <LocalStorageAdmin live={live} />;
+  return live ? <LiveConnectionAdmin live={live} /> : <DemoConnectionAdmin />;
+}
+
+function DemoConnectionAdmin() {
   const s = useStyles();
   const [url, setUrl] = useState('https://contoso.sharepoint.com/sites/ProcurementSourcing');
   const [state, setState] = useState<'idle' | 'testing' | 'tested' | 'setting' | 'done'>('done');
@@ -614,6 +628,7 @@ export function CurrenciesAdmin() {
 
   const save = () => {
     currencies.splice(0, currencies.length, ...list);
+    saveDemoDb();
     setMsg({ intent: 'success', text: 'Currencies saved. New projects can use every active currency.' });
   };
   const add = () => {

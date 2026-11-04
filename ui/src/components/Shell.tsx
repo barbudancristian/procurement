@@ -8,7 +8,15 @@ import {
   Input,
   makeStyles,
   Menu,
+  MenuItem,
   MenuItemRadio,
+  MenuDivider,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   MenuList,
   MenuPopover,
   MenuTrigger,
@@ -43,8 +51,12 @@ import {
   Lightbulb20Regular,
   Money20Regular,
   Globe20Regular,
+  ArrowReset20Regular,
+  Database20Regular,
 } from '@fluentui/react-icons';
 import { useApp, usePermissions } from '../state/AppContext';
+import { resetDemoDb } from '../data/demoDb';
+import { getHost } from '../sp/host';
 import { projects, roleLabel, TODAY, type Role } from '../data/mock';
 
 const useStyles = makeStyles({
@@ -153,9 +165,10 @@ function Item({ to, icon, label, count, sub, onClick, end }: { to: string; icon?
 
 export function Shell({ children }: { children: ReactNode }) {
   const s = useStyles();
-  const { branding, dark, setDark, role, setRole, currentUser } = useApp();
+  const { branding, dark, setDark, role, setRole, currentUser, live } = useApp();
   const perm = usePermissions();
   const [open, setOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const navigate = useNavigate();
   const close = () => setOpen(false);
   const active = projects.filter((p) => p.status === 'In progress' || p.status === 'On hold' || p.status === 'Draft');
@@ -165,7 +178,15 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className={s.root}>
       <div className={s.banner}>
-        Design preview with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do.
+        {live ? (
+          <>
+            {live.mode === 'local' ? 'Local database on this computer.' : 'Signed in to SharePoint.'} Project, supplier and report screens still show sample data until the next update.
+          </>
+        ) : (
+          <>
+            Demo mode with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do. Changes are kept on this computer only.
+          </>
+        )}
       </div>
       <header className={s.top}>
         <Button className={s.menuBtn} appearance="subtle" icon={<Navigation20Regular />} aria-label="Open navigation" onClick={() => setOpen(!open)} />
@@ -209,12 +230,20 @@ export function Shell({ children }: { children: ReactNode }) {
               <Button appearance="subtle" icon={<Avatar name={currentUser.name} size={24} />} iconPosition="before">
                 <span className={s.userText}>
                   <Text size={200} weight="semibold">{currentUser.name}</Text>
-                  <Caption1>Viewing as {roleLabel[role]}</Caption1>
+                  <Caption1>{live ? roleLabel[role] : `Viewing as ${roleLabel[role]}`}</Caption1>
                 </span>
                 <ChevronDown16Regular />
               </Button>
             </MenuTrigger>
             <MenuPopover>
+              {live ? (
+                <MenuList>
+                  <MenuGroup>
+                    <MenuGroupHeader>{live.session.username}</MenuGroupHeader>
+                    {live.mode === 'sharepoint' && <MenuItem onClick={() => void live.host.signOut()}>Sign out</MenuItem>}
+                  </MenuGroup>
+                </MenuList>
+              ) : (
               <MenuList
                 checkedValues={{ role: [role] }}
                 onCheckedValueChange={(_, d) => {
@@ -230,11 +259,36 @@ export function Shell({ children }: { children: ReactNode }) {
                     </MenuItemRadio>
                   ))}
                 </MenuGroup>
+                <MenuDivider />
+                <MenuItem icon={<ArrowReset20Regular />} onClick={() => setConfirmReset(true)}>
+                  Reset demo data
+                </MenuItem>
+                {getHost() && (
+                  <MenuItem icon={<Database20Regular />} onClick={() => void getHost()!.setMode(null)}>
+                    Leave the demo
+                  </MenuItem>
+                )}
               </MenuList>
+              )}
             </MenuPopover>
           </Menu>
         </div>
       </header>
+
+      <Dialog open={confirmReset} onOpenChange={(_, d) => setConfirmReset(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Reset demo data?</DialogTitle>
+            <DialogContent>Projects, users and currencies go back to the original sample data. Changes made while presenting are removed.</DialogContent>
+            <DialogActions>
+              <Button onClick={() => setConfirmReset(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={resetDemoDb}>
+                Reset
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       <nav className={mergeClasses(s.nav, open && s.navOpen)} aria-label="Main">
         {perm.isClient ? (
@@ -260,14 +314,14 @@ export function Shell({ children }: { children: ReactNode }) {
                 <Item to="/admin/workflows" icon={<Flow20Regular />} label="Workflows" onClick={close} />
                 <Item to="/admin/currencies" icon={<Money20Regular />} label="Currencies" onClick={close} />
                 <Item to="/admin/branding" icon={<PaintBrush20Regular />} label="Branding" onClick={close} />
-                <Item to="/admin/connection" icon={<PlugConnected20Regular />} label="SharePoint Connection" onClick={close} />
+                <Item to="/admin/connection" icon={<PlugConnected20Regular />} label={live?.mode === 'local' ? 'Data storage' : 'SharePoint Connection'} onClick={close} />
               </>
             )}
             {perm.canSeeAudit && <Item to="/admin/audit" icon={<History20Regular />} label="Audit Log" onClick={close} />}
           </>
         )}
         <Caption1 className={s.navFooter}>
-          {branding.appName} · v0.1 design preview
+          {branding.appName} · {live ? `version ${live.config.appVersion}` : "v0.1 design preview"}
         </Caption1>
       </nav>
 

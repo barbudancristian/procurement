@@ -38,6 +38,7 @@ import {
   type Project,
   type Scope,
 } from '../data/mock';
+import { saveDemoDb } from '../data/demoDb';
 import { usePermissions } from '../state/AppContext';
 
 const useStyles = makeStyles({
@@ -144,6 +145,7 @@ export function NewProject() {
       clientVisible: false,
     };
     projects.unshift(p);
+    saveDemoDb();
     navigate(`/projects/${p.id}?created=1`);
   };
 

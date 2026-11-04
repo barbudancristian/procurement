@@ -1,0 +1,31 @@
+<Project Sdk="WixToolset.Sdk/5.0.2">
+
+  <!--
+    Builds the per-machine MSI from the published desktop app.
+    dotnet build -c Release -p:AppDir=<publish folder>\ -p:Version=0.3.0
+  -->
+  <PropertyGroup>
+    <Version Condition="'$(Version)' == ''">0.3.0</Version>
+    <OutputName>SourcingHub-$(Version)</OutputName>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <DefineConstants>Version=$(Version);AppDir=$(AppDir)</DefineConstants>
+    <!-- ICE38/43/57 misread per-machine Start menu shortcuts as per-user when validating at build time. -->
+    <SuppressIces>ICE38;ICE43;ICE57;ICE61</SuppressIces>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Heat" Version="5.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="$(AppDir)">
+      <ComponentGroupName>AppFiles</ComponentGroupName>
+      <DirectoryRefId>INSTALLFOLDER</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressCom>true</SuppressCom>
+      <SuppressRegistry>true</SuppressRegistry>
+      <PreprocessorVariable>var.AppDir</PreprocessorVariable>
+    </HarvestDirectory>
+  </ItemGroup>
+
+</Project>
