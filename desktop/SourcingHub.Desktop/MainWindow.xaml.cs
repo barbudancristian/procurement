@@ -140,7 +140,7 @@ public partial class MainWindow : Window
     async Task<object?> SignOutAsync()
     {
         await _auth!.SignOutAsync();
-        Dispatcher.InvokeAsync(() => Web.CoreWebView2.Reload());
+        _ = Dispatcher.InvokeAsync(() => Web.CoreWebView2.Reload());
         return null;
     }
 

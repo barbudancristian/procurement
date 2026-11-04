@@ -9,7 +9,8 @@
     <OutputName>SourcingHub-$(Version)</OutputName>
     <InstallerPlatform>x64</InstallerPlatform>
     <DefineConstants>Version=$(Version);AppDir=$(AppDir)</DefineConstants>
-    <SuppressIces>ICE61</SuppressIces>
+    <!-- ICE38/43/57 misread per-machine Start menu shortcuts as per-user when validating at build time. -->
+    <SuppressIces>ICE38;ICE43;ICE57;ICE61</SuppressIces>
   </PropertyGroup>
 
   <ItemGroup>
