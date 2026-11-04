@@ -1,0 +1,59 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!--
+    Per-machine install for the VDI image. IT can pass the connection settings:
+      msiexec /i SourcingHub-x.y.z.msi /qn TENANTID=<guid> CLIENTID=<guid> SITEURL=https://...
+    They are stored under HKLM\SOFTWARE\Sourcing Hub and kept on upgrade.
+  -->
+  <Package Name="Sourcing Hub"
+           Manufacturer="Sourcing Hub"
+           Version="$(var.Version)"
+           UpgradeCode="933866a7-6df1-4185-839d-1a319b7faf5a"
+           Scope="perMachine"
+           Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Sourcing Hub is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <Property Id="TENANTID" Secure="yes">
+      <RegistrySearch Id="FindTenant" Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="TenantId" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="CLIENTID" Secure="yes">
+      <RegistrySearch Id="FindClient" Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="ClientId" Type="raw" Bitness="always64" />
+    </Property>
+    <Property Id="SITEURL" Secure="yes">
+      <RegistrySearch Id="FindSite" Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="SiteUrl" Type="raw" Bitness="always64" />
+    </Property>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Sourcing Hub" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="StartMenuShortcut" Guid="2450bbbc-77b6-482c-be2c-74c36bacb470" Bitness="always64">
+        <Shortcut Id="StartMenu" Name="Sourcing Hub" Description="Procurement and strategic sourcing"
+                  Target="[INSTALLFOLDER]SourcingHub.exe" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+    <ComponentGroup Id="Settings" Directory="INSTALLFOLDER">
+      <Component Id="TenantSetting" Condition="TENANTID" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="TenantId" Type="string" Value="[TENANTID]" KeyPath="yes" />
+      </Component>
+      <Component Id="ClientSetting" Condition="CLIENTID" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="ClientId" Type="string" Value="[CLIENTID]" KeyPath="yes" />
+      </Component>
+      <Component Id="SiteSetting" Condition="SITEURL" Bitness="always64">
+        <RegistryValue Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="SiteUrl" Type="string" Value="[SITEURL]" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <Feature Id="Main" Title="Sourcing Hub">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentGroupRef Id="Settings" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

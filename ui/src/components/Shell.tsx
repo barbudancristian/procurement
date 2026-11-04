@@ -8,6 +8,7 @@ import {
   Input,
   makeStyles,
   Menu,
+  MenuItem,
   MenuItemRadio,
   MenuList,
   MenuPopover,
@@ -153,7 +154,7 @@ function Item({ to, icon, label, count, sub, onClick, end }: { to: string; icon?
 
 export function Shell({ children }: { children: ReactNode }) {
   const s = useStyles();
-  const { branding, dark, setDark, role, setRole, currentUser } = useApp();
+  const { branding, dark, setDark, role, setRole, currentUser, live } = useApp();
   const perm = usePermissions();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
@@ -165,7 +166,11 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <div className={s.root}>
       <div className={s.banner}>
-        Design preview with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do.
+        {live ? (
+          <>Signed in and connected. Project, supplier and report screens still show sample data until the next update.</>
+        ) : (
+          <>Design preview with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do.</>
+        )}
       </div>
       <header className={s.top}>
         <Button className={s.menuBtn} appearance="subtle" icon={<Navigation20Regular />} aria-label="Open navigation" onClick={() => setOpen(!open)} />
@@ -209,12 +214,20 @@ export function Shell({ children }: { children: ReactNode }) {
               <Button appearance="subtle" icon={<Avatar name={currentUser.name} size={24} />} iconPosition="before">
                 <span className={s.userText}>
                   <Text size={200} weight="semibold">{currentUser.name}</Text>
-                  <Caption1>Viewing as {roleLabel[role]}</Caption1>
+                  <Caption1>{live ? roleLabel[role] : `Viewing as ${roleLabel[role]}`}</Caption1>
                 </span>
                 <ChevronDown16Regular />
               </Button>
             </MenuTrigger>
             <MenuPopover>
+              {live ? (
+                <MenuList>
+                  <MenuGroup>
+                    <MenuGroupHeader>{live.session.username}</MenuGroupHeader>
+                    <MenuItem onClick={() => void live.host.signOut()}>Sign out</MenuItem>
+                  </MenuGroup>
+                </MenuList>
+              ) : (
               <MenuList
                 checkedValues={{ role: [role] }}
                 onCheckedValueChange={(_, d) => {
@@ -231,6 +244,7 @@ export function Shell({ children }: { children: ReactNode }) {
                   ))}
                 </MenuGroup>
               </MenuList>
+              )}
             </MenuPopover>
           </Menu>
         </div>
@@ -267,7 +281,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </>
         )}
         <Caption1 className={s.navFooter}>
-          {branding.appName} · v0.1 design preview
+          {branding.appName} · {live ? `version ${live.config.appVersion}` : "v0.1 design preview"}
         </Caption1>
       </nav>
 

@@ -56,6 +56,7 @@ import { PageHeader, Section } from '../../components/common';
 import { auditLog, BASE_CURRENCY, currencies, projects, roleLabel, scopeLabel, users, workflows, type Currency, type Role, type Scope, type User } from '../../data/mock';
 import { contrast, defaultBranding, type Branding } from '../../theme/branding';
 import { useApp } from '../../state/AppContext';
+import { LiveConnectionAdmin } from './LiveConnection';
 
 const useStyles = makeStyles({
   card: { backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke2}`, overflowX: 'auto' },
@@ -444,6 +445,11 @@ const setupSteps = [
 ];
 
 export function ConnectionAdmin() {
+  const { live } = useApp();
+  return live ? <LiveConnectionAdmin live={live} /> : <DemoConnectionAdmin />;
+}
+
+function DemoConnectionAdmin() {
   const s = useStyles();
   const [url, setUrl] = useState('https://contoso.sharepoint.com/sites/ProcurementSourcing');
   const [state, setState] = useState<'idle' | 'testing' | 'tested' | 'setting' | 'done'>('done');

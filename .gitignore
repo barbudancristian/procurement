@@ -3,3 +3,7 @@ dist/
 dist-preview/
 *.log
 .DS_Store
+desktop/**/bin/
+desktop/**/obj/
+desktop/SourcingHub.Desktop/wwwroot/
+out/

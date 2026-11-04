@@ -2,6 +2,18 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import type { Theme } from '@fluentui/react-components';
 import { defaultBranding, makeThemes, type Branding } from '../theme/branding';
 import { users, type Role, type User } from '../data/mock';
+import { getHost, roleFromClaims, type Host, type HostConfig, type HostSession } from '../sp/host';
+import { GraphClient } from '../sp/graph';
+
+/** Set when the app runs inside the Windows desktop app and the user is signed in. */
+export interface LiveSession {
+  host: Host;
+  session: HostSession;
+  config: HostConfig;
+  graph: GraphClient;
+}
+
+export type StartState = { kind: 'demo' } | { kind: 'starting' } | { kind: 'ready' } | { kind: 'no-role'; name: string } | { kind: 'error'; message: string };
 
 interface AppState {
   branding: Branding;
@@ -12,6 +24,10 @@ interface AppState {
   role: Role;
   setRole: (r: Role) => void;
   currentUser: User;
+  live: LiveSession | null;
+  setLiveConfig: (c: HostConfig) => void;
+  start: StartState;
+  retryStart: () => void;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -47,9 +63,46 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.title = branding.appName;
   }, [dark, branding.appName]);
 
-  const currentUser = users.find((u) => u.id === demoUserForRole[role])!;
+  // Inside the desktop app: sign in, read the user's app role and the connection settings.
+  const [live, setLive] = useState<LiveSession | null>(null);
+  const [start, setStart] = useState<StartState>(() => (getHost() ? { kind: 'starting' } : { kind: 'demo' }));
+  const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    const host = getHost();
+    if (!host) return;
+    let cancelled = false;
+    setStart({ kind: 'starting' });
+    (async () => {
+      try {
+        const session = await host.session();
+        const config = await host.config();
+        if (cancelled) return;
+        const r = roleFromClaims(session.roles);
+        if (!r) {
+          setStart({ kind: 'no-role', name: session.name });
+          return;
+        }
+        setRole(r);
+        setLive({ host, session, config, graph: new GraphClient({ token: () => host.token() }) });
+        setStart({ kind: 'ready' });
+      } catch (e) {
+        if (!cancelled) setStart({ kind: 'error', message: e instanceof Error ? e.message : String(e) });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [attempt]);
+
+  const demoUser = users.find((u) => u.id === demoUserForRole[role])!;
+  const currentUser: User = live
+    ? { ...demoUser, id: live.session.username, name: live.session.name, email: live.session.username, role }
+    : demoUser;
+  const setLiveConfig = (config: HostConfig) => setLive((l) => (l ? { ...l, config } : l));
   return (
-    <Ctx.Provider value={{ branding, setBranding, dark, setDark, theme, role, setRole, currentUser }}>
+    <Ctx.Provider
+      value={{ branding, setBranding, dark, setDark, theme, role, setRole, currentUser, live, setLiveConfig, start, retryStart: () => setAttempt((a) => a + 1) }}
+    >
       {children}
     </Ctx.Provider>
   );
