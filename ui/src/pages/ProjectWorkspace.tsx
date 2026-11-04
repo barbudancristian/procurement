@@ -83,6 +83,7 @@ import {
   type Project,
   type Visibility,
 } from '../data/mock';
+import { saveDemoDb } from '../data/demoDb';
 import { usePermissions } from '../state/AppContext';
 
 const useStyles = makeStyles({
@@ -189,6 +190,12 @@ export function ProjectWorkspace() {
           ];
 
   const advance = () => {
+    if (project) {
+      project.stage = p.stage + 1;
+      project.modified = TODAY;
+      if (project.status === 'Draft') project.status = 'In progress';
+      saveDemoDb();
+    }
     setStageOverride(p.stage + 1);
     setToast(`Moved to ${nextStage.name}. The change was recorded in the audit log.`);
   };

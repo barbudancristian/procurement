@@ -21,6 +21,10 @@ public partial class MainWindow : Window
     readonly AppConfig _config = AppConfig.Load();
     AuthService? _auth;
 
+    // Demo mode runs on the built-in demo database with no sign-in and no SharePoint.
+    // It is used when the app is started with --demo or has not been configured yet.
+    bool _demo;
+
     static string AppVersion =>
         Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "0.0.0";
 
@@ -32,13 +36,11 @@ public partial class MainWindow : Window
 
     async Task StartAsync()
     {
-        if (!_config.IsValid(out var problem))
-        {
-            Status.Text = $"Sourcing Hub is not configured yet. {problem}\n\nIT needs to place config.json in {Path.GetDirectoryName(AppConfig.MachineFile)}. A sample is in the install folder.";
-            Web.Visibility = Visibility.Collapsed;
-            return;
-        }
-        _auth = new AuthService(_config, () => new WindowInteropHelper(this).Handle);
+        var askedForDemo = Environment.GetCommandLineArgs().Any(a => a.Equals("--demo", StringComparison.OrdinalIgnoreCase));
+        _demo = askedForDemo || _config.Demo || !_config.IsValid(out _);
+        if (!_demo)
+            _auth = new AuthService(_config, () => new WindowInteropHelper(this).Handle);
+        Title = _demo ? "Sourcing Hub (demo)" : "Sourcing Hub";
 
         try
         {
@@ -96,8 +98,8 @@ public partial class MainWindow : Window
             var payload = root.TryGetProperty("payload", out var p) ? p : default;
             object? result = type switch
             {
-                "session" => await _auth!.SessionAsync(),
-                "token" => (await _auth!.AcquireAsync()).AccessToken,
+                "session" => await Auth().SessionAsync(),
+                "token" => (await Auth().AcquireAsync()).AccessToken,
                 "config" => ConfigView(),
                 "setSiteUrl" => SetSiteUrl(payload.GetProperty("url").GetString() ?? ""),
                 "signOut" => await SignOutAsync(),
@@ -120,10 +122,13 @@ public partial class MainWindow : Window
         }
     }
 
+    AuthService Auth() => _auth ?? throw new InvalidOperationException("Sign-in is not available in demo mode.");
+
     void Reply(object message) => Web.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(message, Json));
 
     object ConfigView() => new
     {
+        mode = _demo ? "demo" : "live",
         siteUrl = _config.SiteUrl,
         siteUrlSource = _config.SiteUrlSource,
         appVersion = AppVersion,
@@ -139,7 +144,7 @@ public partial class MainWindow : Window
 
     async Task<object?> SignOutAsync()
     {
-        await _auth!.SignOutAsync();
+        await Auth().SignOutAsync();
         _ = Dispatcher.InvokeAsync(() => Web.CoreWebView2.Reload());
         return null;
     }

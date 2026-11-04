@@ -10,6 +10,13 @@ import {
   Menu,
   MenuItem,
   MenuItemRadio,
+  MenuDivider,
+  Dialog,
+  DialogSurface,
+  DialogBody,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
   MenuList,
   MenuPopover,
   MenuTrigger,
@@ -44,8 +51,10 @@ import {
   Lightbulb20Regular,
   Money20Regular,
   Globe20Regular,
+  ArrowReset20Regular,
 } from '@fluentui/react-icons';
 import { useApp, usePermissions } from '../state/AppContext';
+import { resetDemoDb } from '../data/demoDb';
 import { projects, roleLabel, TODAY, type Role } from '../data/mock';
 
 const useStyles = makeStyles({
@@ -157,6 +166,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const { branding, dark, setDark, role, setRole, currentUser, live } = useApp();
   const perm = usePermissions();
   const [open, setOpen] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const navigate = useNavigate();
   const close = () => setOpen(false);
   const active = projects.filter((p) => p.status === 'In progress' || p.status === 'On hold' || p.status === 'Draft');
@@ -169,7 +179,9 @@ export function Shell({ children }: { children: ReactNode }) {
         {live ? (
           <>Signed in and connected. Project, supplier and report screens still show sample data until the next update.</>
         ) : (
-          <>Design preview with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do.</>
+          <>
+            Demo mode with sample data. Use <strong>Viewing as</strong> (top right) to see what each role can see and do. Changes are kept on this computer only.
+          </>
         )}
       </div>
       <header className={s.top}>
@@ -243,12 +255,31 @@ export function Shell({ children }: { children: ReactNode }) {
                     </MenuItemRadio>
                   ))}
                 </MenuGroup>
+                <MenuDivider />
+                <MenuItem icon={<ArrowReset20Regular />} onClick={() => setConfirmReset(true)}>
+                  Reset demo data
+                </MenuItem>
               </MenuList>
               )}
             </MenuPopover>
           </Menu>
         </div>
       </header>
+
+      <Dialog open={confirmReset} onOpenChange={(_, d) => setConfirmReset(d.open)}>
+        <DialogSurface>
+          <DialogBody>
+            <DialogTitle>Reset demo data?</DialogTitle>
+            <DialogContent>Projects, users and currencies go back to the original sample data. Changes made while presenting are removed.</DialogContent>
+            <DialogActions>
+              <Button onClick={() => setConfirmReset(false)}>Cancel</Button>
+              <Button appearance="primary" onClick={resetDemoDb}>
+                Reset
+              </Button>
+            </DialogActions>
+          </DialogBody>
+        </DialogSurface>
+      </Dialog>
 
       <nav className={mergeClasses(s.nav, open && s.navOpen)} aria-label="Main">
         {perm.isClient ? (

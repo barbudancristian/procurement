@@ -17,6 +17,11 @@ public sealed class AppConfig
     [JsonPropertyName("clientId")] public string ClientId { get; set; } = "";
     [JsonPropertyName("siteUrl")] public string? SiteUrl { get; set; }
 
+    /// <summary>"demo" starts the app on its demo database for every user of this computer.</summary>
+    [JsonPropertyName("mode")] public string? Mode { get; set; }
+
+    [JsonIgnore] public bool Demo => string.Equals(Mode, "demo", StringComparison.OrdinalIgnoreCase);
+
     [JsonIgnore] public string? SiteUrlSource { get; set; }
 
     public static string MachineFile => Path.Combine(
@@ -51,6 +56,7 @@ public sealed class AppConfig
             if (!string.IsNullOrWhiteSpace(layer.TenantId)) config.TenantId = layer.TenantId.Trim();
             if (!string.IsNullOrWhiteSpace(layer.ClientId)) config.ClientId = layer.ClientId.Trim();
             if (!string.IsNullOrWhiteSpace(layer.SiteUrl)) config.SiteUrl = layer.SiteUrl.Trim();
+            if (!string.IsNullOrWhiteSpace(layer.Mode)) config.Mode = layer.Mode.Trim();
         }
         if (!string.IsNullOrWhiteSpace(config.SiteUrl)) config.SiteUrlSource = "machine";
         var user = Read(UserFile);

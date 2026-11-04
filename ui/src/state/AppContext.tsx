@@ -74,8 +74,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setStart({ kind: 'starting' });
     (async () => {
       try {
-        const session = await host.session();
         const config = await host.config();
+        if (cancelled) return;
+        if (config.mode === 'demo') {
+          setStart({ kind: 'demo' });
+          return;
+        }
+        const session = await host.session();
         if (cancelled) return;
         const r = roleFromClaims(session.roles);
         if (!r) {

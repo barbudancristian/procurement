@@ -14,6 +14,8 @@ export interface HostSession {
 }
 
 export interface HostConfig {
+  /** "demo": no SharePoint and no sign-in; the app runs on its built-in demo database. */
+  mode?: 'live' | 'demo';
   siteUrl: string | null;
   /** "machine": set by IT for every user. "user": set in the app by this user. */
   siteUrlSource: 'machine' | 'user' | null;

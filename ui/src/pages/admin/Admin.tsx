@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import {
   Avatar,
   Badge,
@@ -57,6 +57,7 @@ import { auditLog, BASE_CURRENCY, currencies, projects, roleLabel, scopeLabel, u
 import { contrast, defaultBranding, type Branding } from '../../theme/branding';
 import { useApp } from '../../state/AppContext';
 import { LiveConnectionAdmin } from './LiveConnection';
+import { saveDemoDb } from '../../data/demoDb';
 
 const useStyles = makeStyles({
   card: { backgroundColor: tokens.colorNeutralBackground1, borderRadius: tokens.borderRadiusLarge, border: `1px solid ${tokens.colorNeutralStroke2}`, overflowX: 'auto' },
@@ -84,6 +85,11 @@ const useStyles = makeStyles({
 export function UsersAdmin() {
   const s = useStyles();
   const [list, setList] = useState<User[]>(users);
+  useEffect(() => {
+    if (list === users) return;
+    users.splice(0, users.length, ...list);
+    saveDemoDb();
+  }, [list]);
   const [tab, setTab] = useState<'internal' | 'clients'>('internal');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<Role>('specialist');
@@ -620,6 +626,7 @@ export function CurrenciesAdmin() {
 
   const save = () => {
     currencies.splice(0, currencies.length, ...list);
+    saveDemoDb();
     setMsg({ intent: 'success', text: 'Currencies saved. New projects can use every active currency.' });
   };
   const add = () => {

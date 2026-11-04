@@ -34,6 +34,8 @@
       <Component Id="StartMenuShortcut" Guid="2450bbbc-77b6-482c-be2c-74c36bacb470" Bitness="always64">
         <Shortcut Id="StartMenu" Name="Sourcing Hub" Description="Procurement and strategic sourcing"
                   Target="[INSTALLFOLDER]SourcingHub.exe" WorkingDirectory="INSTALLFOLDER" />
+        <Shortcut Id="StartMenuDemo" Name="Sourcing Hub (Demo)" Description="Sourcing Hub with demo data, no SharePoint needed"
+                  Target="[INSTALLFOLDER]SourcingHub.exe" Arguments="--demo" WorkingDirectory="INSTALLFOLDER" />
         <RegistryValue Root="HKLM" Key="SOFTWARE\Sourcing Hub" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
       </Component>
     </StandardDirectory>
